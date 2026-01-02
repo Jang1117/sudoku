@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스도쿠 게임</title>
+    <style>
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .game-container {
+                page-break-after: always;
+                padding: 15mm;
+                margin: 0;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            .game-container:last-child {
+                page-break-after: auto;
+            }
+            .screen-only {
+                display: none !important;
+            }
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .controls-section {
+            max-width: 800px;
+            margin: 0 auto 30px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .difficulty-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: 2px solid #4CAF50;
+            background-color: white;
+            color: #4CAF50;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .difficulty-btn:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .difficulty-btn.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .count-selector {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .count-selector label {
+            font-size: 18px;
+            color: #333;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .count-selector input {
+            width: 100px;
+            padding: 10px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .action-buttons {
+            text-align: center;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 15px 35px;
+            font-size: 18px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-generate {
+            background-color: #4CAF50;
+        }
+
+        .btn-print {
+            background-color: #2196F3;
+        }
+
+        .btn-clear {
+            background-color: #f44336;
+        }
+
+        .puzzles-container {
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .game-info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .puzzle-number {
+            text-align: center;
+            font-size: 16px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .sudoku-grid {
+            display: inline-block;
+            border: 4px solid #000;
+            margin: 0 auto;
+            display: block;
+            width: fit-content;
+        }
+
+        .sudoku-row {
+            display: flex;
+        }
+
+        .sudoku-cell {
+            width: 80px;
+            height: 80px;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .sudoku-cell.given {
+            background-color: #e8e8e8;
+            color: #000;
+        }
+
+        .sudoku-cell.empty {
+            background-color: white;
+        }
+
+        .sudoku-row:nth-child(3) .sudoku-cell,
+        .sudoku-row:nth-child(6) .sudoku-cell {
+            border-bottom: 3px solid #000;
+        }
+
+        .sudoku-cell:nth-child(3),
+        .sudoku-cell:nth-child(6) {
+            border-right: 3px solid #000;
+        }
+
+        @media print {
+            .sudoku-cell {
+                width: 18mm;
+                height: 18mm;
+                font-size: 28px;
+            }
+            
+            .sudoku-grid {
+                border: 3px solid #000;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <div class="controls-section">
+            <h1>스도쿠 퍼즐 생성기</h1>
+            
+            <div class="difficulty-selector">
+                <button class="difficulty-btn active" onclick="setDifficulty('easy')">초급</button>
+                <button class="difficulty-btn" onclick="setDifficulty('medium')">중급</button>
+                <button class="difficulty-btn" onclick="setDifficulty('hard')">고급</button>
+            </div>
+
+            <div class="count-selector">
+                <label for="puzzle-count">생성할 퍼즐 개수:</label>
+                <input type="number" id="puzzle-count" min="1" max="50" value="5">
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-generate" onclick="generateSamplePuzzle()">새 퍼즐</button>
+                <button class="btn btn-print" onclick="printPuzzles()">프린트</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="puzzles-container" id="puzzles-container">
+    </div>
+
+    <script>
+        let currentDifficulty = 'easy';
+        const difficulties = {
+            easy: 40,    // 40개의 빈 칸
+            medium: 50,  // 50개의 빈 칸
+            hard: 60     // 60개의 빈 칸
+        };
+
+        const difficultyNames = {
+            easy: '초급',
+            medium: '중급',
+            hard: '고급'
+        };
+
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            
+            // 버튼 활성화 상태 업데이트
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 샘플 퍼즐 생성
+            generateSamplePuzzle();
+        }
+
+        function generateCompleteSudoku() {
+            const grid = Array(9).fill(null).map(() => Array(9).fill(0));
+            
+            function isValid(grid, row, col, num) {
+                // 행 검사
+                for (let x = 0; x < 9; x++) {
+                    if (grid[row][x] === num) return false;
+                }
+                
+                // 열 검사
+                for (let x = 0; x < 9; x++) {
+                    if (grid[x][col] === num) return false;
+                }
+                
+                // 3x3 박스 검사
+                let startRow = row - row % 3;
+                let startCol = col - col % 3;
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (grid[i + startRow][j + startCol] === num) return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            function fillGrid(grid) {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (grid[row][col] === 0) {
+                            let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                            // 숫자를 무작위로 섞기
+                            for (let i = numbers.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+                            }
+                            
+                            for (let num of numbers) {
+                                if (isValid(grid, row, col, num)) {
+                                    grid[row][col] = num;
+                                    
+                                    if (fillGrid(grid)) {
+                                        return true;
+                                    }
+                                    
+                                    grid[row][col] = 0;
+                                }
+                            }
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            fillGrid(grid);
+            return grid;
+        }
+
+        function createPuzzle(completedGrid, difficulty) {
+            const puzzle = completedGrid.map(row => [...row]);
+            const cellsToRemove = difficulties[difficulty];
+            let removed = 0;
+            
+            while (removed < cellsToRemove) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                
+                if (puzzle[row][col] !== 0) {
+                    puzzle[row][col] = 0;
+                    removed++;
+                }
+            }
+            
+            return puzzle;
+        }
+
+        function createSudokuHTML(grid, puzzleNumber, totalPuzzles, isSample = false) {
+            let html = '<div class="game-container">';
+            if (!isSample) {
+                html += `<div class="puzzle-number screen-only">퍼즐 ${puzzleNumber} / ${totalPuzzles}</div>`;
+            }
+            html += `<div class="game-info">난이도: ${difficultyNames[currentDifficulty]}</div>`;
+            html += '<div class="sudoku-grid">';
+            
+            for (let i = 0; i < 9; i++) {
+                html += '<div class="sudoku-row">';
+                for (let j = 0; j < 9; j++) {
+                    const cellClass = grid[i][j] !== 0 ? 'sudoku-cell given' : 'sudoku-cell empty';
+                    const cellValue = grid[i][j] !== 0 ? grid[i][j] : '';
+                    html += `<div class="${cellClass}">${cellValue}</div>`;
+                }
+                html += '</div>';
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        function generateSamplePuzzle() {
+            const container = document.getElementById('puzzles-container');
+            const completedGrid = generateCompleteSudoku();
+            const puzzle = createPuzzle(completedGrid, currentDifficulty);
+            container.innerHTML = createSudokuHTML(puzzle, 1, 1, true);
+        }
+
+        function printPuzzles() {
+            const count = parseInt(document.getElementById('puzzle-count').value);
+            
+            if (count < 1 || count > 50) {
+                alert('1~50 사이의 숫자를 입력해주세요.');
+                return;
+            }
+
+            const container = document.getElementById('puzzles-container');
+            container.innerHTML = '';
+
+            // 프린트할 퍼즐들 생성
+            for (let i = 1; i <= count; i++) {
+                const completedGrid = generateCompleteSudoku();
+                const puzzle = createPuzzle(completedGrid, currentDifficulty);
+                container.innerHTML += createSudokuHTML(puzzle, i, count);
+            }
+
+            // 프린트 실행
+            window.print();
+
+            // 프린트 후 다시 샘플 1개만 표시
+            setTimeout(() => {
+                generateSamplePuzzle();
+            }, 100);
+        }
+
+        // 페이지 로드 시 샘플 퍼즐 생성
+        window.addEventListener('load', () => {
+            generateSamplePuzzle();
+        });
+    </script>
+</body>
+</html>
