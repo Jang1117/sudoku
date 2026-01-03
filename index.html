@@ -242,170 +242,155 @@
     <div class="puzzles-container" id="puzzles-container">
     </div>
 
-    <script>
-        let currentDifficulty = 'easy';
-        const difficulties = {
-            easy: 40,    // 40개의 빈 칸
-            medium: 50,  // 50개의 빈 칸
-            hard: 60     // 60개의 빈 칸
-        };
+<script>
+    let currentDifficulty = 'easy';
+    const difficulties = {
+        easy: 35,    // 유일한 답을 보장하면서 지울 수 있는 안정적인 개수
+        medium: 45,
+        hard: 52     // 9x9에서 무작위 제거 시 55~60개는 유일한 해를 찾기 매우 어렵습니다.
+    };
 
-        const difficultyNames = {
-            easy: '초급',
-            medium: '중급',
-            hard: '고급'
-        };
+    const difficultyNames = {
+        easy: '초급',
+        medium: '중급',
+        hard: '고급'
+    };
 
-        function setDifficulty(level) {
-            currentDifficulty = level;
-            
-            // 버튼 활성화 상태 업데이트
-            document.querySelectorAll('.difficulty-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // 샘플 퍼즐 생성
-            generateSamplePuzzle();
-        }
+    // 공통으로 사용할 유효성 검사 함수
+    function isValid(grid, row, col, num) {
+        for (let x = 0; x < 9; x++) if (grid[row][x] === num) return false;
+        for (let x = 0; x < 9; x++) if (grid[x][col] === num) return false;
+        let startRow = row - row % 3, startCol = col - col % 3;
+        for (let i = 0; i < 3; i++)
+            for (let j = 0; j < 3; j++)
+                if (grid[i + startRow][j + startCol] === num) return false;
+        return true;
+    }
 
-        function generateCompleteSudoku() {
-            const grid = Array(9).fill(null).map(() => Array(9).fill(0));
-            
-            function isValid(grid, row, col, num) {
-                // 행 검사
-                for (let x = 0; x < 9; x++) {
-                    if (grid[row][x] === num) return false;
-                }
-                
-                // 열 검사
-                for (let x = 0; x < 9; x++) {
-                    if (grid[x][col] === num) return false;
-                }
-                
-                // 3x3 박스 검사
-                let startRow = row - row % 3;
-                let startCol = col - col % 3;
-                for (let i = 0; i < 3; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        if (grid[i + startRow][j + startCol] === num) return false;
-                    }
-                }
-                
-                return true;
-            }
-            
-            function fillGrid(grid) {
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        if (grid[row][col] === 0) {
-                            let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-                            // 숫자를 무작위로 섞기
-                            for (let i = numbers.length - 1; i > 0; i--) {
-                                const j = Math.floor(Math.random() * (i + 1));
-                                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-                            }
-                            
-                            for (let num of numbers) {
-                                if (isValid(grid, row, col, num)) {
-                                    grid[row][col] = num;
-                                    
-                                    if (fillGrid(grid)) {
-                                        return true;
-                                    }
-                                    
-                                    grid[row][col] = 0;
-                                }
-                            }
-                            return false;
+    // 답의 개수를 세는 함수 (유일성 확인용)
+    function countSolutions(grid, limit = 2) {
+        let count = 0;
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                if (grid[row][col] === 0) {
+                    for (let num = 1; num <= 9; num++) {
+                        if (isValid(grid, row, col, num)) {
+                            grid[row][col] = num;
+                            count += countSolutions(grid, limit - count);
+                            grid[row][col] = 0;
+                            if (count >= limit) return count; // 답이 2개 이상이면 즉시 중단
                         }
                     }
-                }
-                return true;
-            }
-            
-            fillGrid(grid);
-            return grid;
-        }
-
-        function createPuzzle(completedGrid, difficulty) {
-            const puzzle = completedGrid.map(row => [...row]);
-            const cellsToRemove = difficulties[difficulty];
-            let removed = 0;
-            
-            while (removed < cellsToRemove) {
-                let row = Math.floor(Math.random() * 9);
-                let col = Math.floor(Math.random() * 9);
-                
-                if (puzzle[row][col] !== 0) {
-                    puzzle[row][col] = 0;
-                    removed++;
+                    return count;
                 }
             }
-            
-            return puzzle;
         }
+        return 1; // 모든 빈칸을 채웠으면 답 1개 발견
+    }
 
-        function createSudokuHTML(grid, puzzleNumber, totalPuzzles, isSample = false) {
-            let html = '<div class="game-container">';
-            if (!isSample) {
-                html += `<div class="puzzle-number screen-only">퍼즐 ${puzzleNumber} / ${totalPuzzles}</div>`;
-            }
-            html += `<div class="game-info">난이도: ${difficultyNames[currentDifficulty]}</div>`;
-            html += '<div class="sudoku-grid">';
-            
-            for (let i = 0; i < 9; i++) {
-                html += '<div class="sudoku-row">';
-                for (let j = 0; j < 9; j++) {
-                    const cellClass = grid[i][j] !== 0 ? 'sudoku-cell given' : 'sudoku-cell empty';
-                    const cellValue = grid[i][j] !== 0 ? grid[i][j] : '';
-                    html += `<div class="${cellClass}">${cellValue}</div>`;
+    function generateCompleteSudoku() {
+        const grid = Array(9).fill(null).map(() => Array(9).fill(0));
+        function fillGrid(grid) {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0) {
+                        let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+                        for (let num of numbers) {
+                            if (isValid(grid, row, col, num)) {
+                                grid[row][col] = num;
+                                if (fillGrid(grid)) return true;
+                                grid[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
                 }
-                html += '</div>';
             }
-            
-            html += '</div></div>';
-            return html;
+            return true;
         }
+        fillGrid(grid);
+        return grid;
+    }
 
-        function generateSamplePuzzle() {
-            const container = document.getElementById('puzzles-container');
+    function createPuzzle(completedGrid, difficulty) {
+        const puzzle = completedGrid.map(row => [...row]);
+        const targetEmptyCells = difficulties[difficulty];
+        
+        // 0부터 80까지의 좌표를 무작위로 섞음
+        let positions = Array.from({length: 81}, (_, i) => i).sort(() => Math.random() - 0.5);
+        let removedCount = 0;
+
+        for (let pos of positions) {
+            if (removedCount >= targetEmptyCells) break;
+
+            let row = Math.floor(pos / 9);
+            let col = pos % 9;
+            let backup = puzzle[row][col];
+            
+            puzzle[row][col] = 0;
+
+            // 복사본으로 유일성 검사 (원본 보존)
+            let tempGrid = puzzle.map(r => [...r]);
+            if (countSolutions(tempGrid) !== 1) {
+                puzzle[row][col] = backup; // 답이 여러 개가 되면 다시 복구
+            } else {
+                removedCount++; // 유일한 답이 유지되면 제거 확정
+            }
+        }
+        return puzzle;
+    }
+
+    // --- 아래 UI 관련 함수들은 기존과 동일 ---
+    function setDifficulty(level) {
+        currentDifficulty = level;
+        document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        generateSamplePuzzle();
+    }
+
+    function createSudokuHTML(grid, puzzleNumber, totalPuzzles, isSample = false) {
+        let html = '<div class="game-container">';
+        if (!isSample) html += `<div class="puzzle-number screen-only">퍼즐 ${puzzleNumber} / ${totalPuzzles}</div>`;
+        html += `<div class="game-info">난이도: ${difficultyNames[currentDifficulty]}</div>`;
+        html += '<div class="sudoku-grid">';
+        for (let i = 0; i < 9; i++) {
+            html += '<div class="sudoku-row">';
+            for (let j = 0; j < 9; j++) {
+                const cellClass = grid[i][j] !== 0 ? 'sudoku-cell given' : 'sudoku-cell empty';
+                const cellValue = grid[i][j] !== 0 ? grid[i][j] : '';
+                html += `<div class="${cellClass}">${cellValue}</div>`;
+            }
+            html += '</div>';
+        }
+        html += '</div></div>';
+        return html;
+    }
+
+    function generateSamplePuzzle() {
+        const container = document.getElementById('puzzles-container');
+        const completedGrid = generateCompleteSudoku();
+        const puzzle = createPuzzle(completedGrid, currentDifficulty);
+        container.innerHTML = createSudokuHTML(puzzle, 1, 1, true);
+    }
+
+    function printPuzzles() {
+        const count = parseInt(document.getElementById('puzzle-count').value);
+        if (count < 1 || count > 50) {
+            alert('1~50 사이의 숫자를 입력해주세요.');
+            return;
+        }
+        const container = document.getElementById('puzzles-container');
+        container.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
             const completedGrid = generateCompleteSudoku();
             const puzzle = createPuzzle(completedGrid, currentDifficulty);
-            container.innerHTML = createSudokuHTML(puzzle, 1, 1, true);
+            container.innerHTML += createSudokuHTML(puzzle, i, count);
         }
+        window.print();
+        setTimeout(() => { generateSamplePuzzle(); }, 100);
+    }
 
-        function printPuzzles() {
-            const count = parseInt(document.getElementById('puzzle-count').value);
-            
-            if (count < 1 || count > 50) {
-                alert('1~50 사이의 숫자를 입력해주세요.');
-                return;
-            }
-
-            const container = document.getElementById('puzzles-container');
-            container.innerHTML = '';
-
-            // 프린트할 퍼즐들 생성
-            for (let i = 1; i <= count; i++) {
-                const completedGrid = generateCompleteSudoku();
-                const puzzle = createPuzzle(completedGrid, currentDifficulty);
-                container.innerHTML += createSudokuHTML(puzzle, i, count);
-            }
-
-            // 프린트 실행
-            window.print();
-
-            // 프린트 후 다시 샘플 1개만 표시
-            setTimeout(() => {
-                generateSamplePuzzle();
-            }, 100);
-        }
-
-        // 페이지 로드 시 샘플 퍼즐 생성
-        window.addEventListener('load', () => {
-            generateSamplePuzzle();
-        });
-    </script>
+    window.addEventListener('load', () => { generateSamplePuzzle(); });
+</script>
 </body>
 </html>
